@@ -113,6 +113,9 @@ export default function App() {
   const [idOfGettingWindowsPassword, setIdOfGettingWindowsPassword] = useState("");
   const [idOfInstanceChangingIp, setIdOfInstanceChangingIp] = useState("");
   const [idOfInstanceTerminating, setIdOfInstanceTerminating] = useState("");
+  const [idOfInstanceStarting, setIdOfInstanceStarting] = useState("");
+  const [idOfInstanceStopping, setIdOfInstanceStopping] = useState("");
+  const [idOfInstanceRebooting, setIdOfInstanceRebooting] = useState("");
   const [isShowAdvancedOptions, setIsShowAdvancedOptions] = useState(false);
 
   //Data States
@@ -1025,6 +1028,282 @@ export default function App() {
     }
   }
 
+  function startInstance(id) {
+    setIdOfInstanceStarting(id);
+    if (aki.length !== 20 || saki.length !== 40) {
+      showDialog("无效凭证", "请检查凭证格式是否正确");
+      setIdOfInstanceStarting("");
+      return;
+    }
+    if ((mode === 2 || mode === 3 || mode === 4) && !validateRemote()) {
+      showDialog("无效远端地址", "远端地址格式不正确，请修改后再试一次");
+      setIdOfInstanceStarting("");
+      return;
+    }
+    if ((mode === 3 || mode === 4) && !validateProxy()) {
+      showDialog("无效代理地址", "代理地址格式不正确，请修改后再试一次");
+      setIdOfInstanceStarting("");
+      return;
+    }
+    if (mode === 1 || mode === 3) {
+      AWS.config = new AWS.Config();
+      AWS.config.update(
+        {
+          accessKeyId: aki,
+          secretAccessKey: saki,
+          region: regionOfCheckedInstances
+        }
+      );
+      if (mode === 3) {
+        AWS.config.update({
+          httpOptions: { agent: ProxyAgent(proxy) }
+        });
+      }
+      var ec2 = new AWS.EC2();
+      var params = {
+        InstanceIds: [
+          id
+        ]
+      };
+      ec2.startInstances(params, function (err, data) {
+        if (err) {
+          showDialog("启动实例失败：" + err.name, "错误：" + err.message + " 请再试一次或联系支持");
+          setIdOfInstanceStarting("");
+        }
+        else {
+          showCheckInstancesAlert("启动实例成功", "实例正在启动中");
+          setIdOfInstanceStarting("");
+          checkInstances(true);
+        }
+      });
+    }
+    else if (mode === 2 || mode === 4) {
+      var postBody
+      if (mode === 2) {
+        postBody = JSON.stringify({
+          aki: aki,
+          saki: saki,
+          region: regionOfCheckedInstances,
+          instanceId: id,
+          useProxy: false
+        });
+      }
+      else if (mode === 4) {
+        postBody = JSON.stringify({
+          aki: aki,
+          saki: saki,
+          region: regionOfCheckedInstances,
+          instanceId: id,
+          useProxy: true,
+          proxy: proxy
+        });
+      }
+      fetch(remote + '/aws-start-instance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: postBody
+      })
+        .then(async (response) => {
+          var body = await response.json();
+          if (response.ok) {
+            showCheckInstancesAlert("启动实例成功", "实例正在启动中");
+            setIdOfInstanceStarting("");
+            checkInstances(true);
+          }
+          else {
+            showDialog("启动实例失败：" + body.error.name, "错误：" + body.error.message + " 请再试一次或联系支持");
+            setIdOfInstanceStarting("");
+          }
+        });
+    }
+  }
+
+  function stopInstance(id) {
+    setIdOfInstanceStopping(id);
+    if (aki.length !== 20 || saki.length !== 40) {
+      showDialog("无效凭证", "请检查凭证格式是否正确");
+      setIdOfInstanceStopping("");
+      return;
+    }
+    if ((mode === 2 || mode === 3 || mode === 4) && !validateRemote()) {
+      showDialog("无效远端地址", "远端地址格式不正确，请修改后再试一次");
+      setIdOfInstanceStopping("");
+      return;
+    }
+    if ((mode === 3 || mode === 4) && !validateProxy()) {
+      showDialog("无效代理地址", "代理地址格式不正确，请修改后再试一次");
+      setIdOfInstanceStopping("");
+      return;
+    }
+    if (mode === 1 || mode === 3) {
+      AWS.config = new AWS.Config();
+      AWS.config.update(
+        {
+          accessKeyId: aki,
+          secretAccessKey: saki,
+          region: regionOfCheckedInstances
+        }
+      );
+      if (mode === 3) {
+        AWS.config.update({
+          httpOptions: { agent: ProxyAgent(proxy) }
+        });
+      }
+      var ec2 = new AWS.EC2();
+      var params = {
+        InstanceIds: [
+          id
+        ]
+      };
+      ec2.stopInstances(params, function (err, data) {
+        if (err) {
+          showDialog("停止实例失败：" + err.name, "错误：" + err.message + " 请再试一次或联系支持");
+          setIdOfInstanceStopping("");
+        }
+        else {
+          showCheckInstancesAlert("停止实例成功", "实例正在停止中");
+          setIdOfInstanceStopping("");
+          checkInstances(true);
+        }
+      });
+    }
+    else if (mode === 2 || mode === 4) {
+      var postBody
+      if (mode === 2) {
+        postBody = JSON.stringify({
+          aki: aki,
+          saki: saki,
+          region: regionOfCheckedInstances,
+          instanceId: id,
+          useProxy: false
+        });
+      }
+      else if (mode === 4) {
+        postBody = JSON.stringify({
+          aki: aki,
+          saki: saki,
+          region: regionOfCheckedInstances,
+          instanceId: id,
+          useProxy: true,
+          proxy: proxy
+        });
+      }
+      fetch(remote + '/aws-stop-instance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: postBody
+      })
+        .then(async (response) => {
+          var body = await response.json();
+          if (response.ok) {
+            showCheckInstancesAlert("停止实例成功", "实例正在停止中");
+            setIdOfInstanceStopping("");
+            checkInstances(true);
+          }
+          else {
+            showDialog("停止实例失败：" + body.error.name, "错误：" + body.error.message + " 请再试一次或联系支持");
+            setIdOfInstanceStopping("");
+          }
+        });
+    }
+  }
+
+  function rebootInstance(id) {
+    setIdOfInstanceRebooting(id);
+    if (aki.length !== 20 || saki.length !== 40) {
+      showDialog("无效凭证", "请检查凭证格式是否正确");
+      setIdOfInstanceRebooting("");
+      return;
+    }
+    if ((mode === 2 || mode === 3 || mode === 4) && !validateRemote()) {
+      showDialog("无效远端地址", "远端地址格式不正确，请修改后再试一次");
+      setIdOfInstanceRebooting("");
+      return;
+    }
+    if ((mode === 3 || mode === 4) && !validateProxy()) {
+      showDialog("无效代理地址", "代理地址格式不正确，请修改后再试一次");
+      setIdOfInstanceRebooting("");
+      return;
+    }
+    if (mode === 1 || mode === 3) {
+      AWS.config = new AWS.Config();
+      AWS.config.update(
+        {
+          accessKeyId: aki,
+          secretAccessKey: saki,
+          region: regionOfCheckedInstances
+        }
+      );
+      if (mode === 3) {
+        AWS.config.update({
+          httpOptions: { agent: ProxyAgent(proxy) }
+        });
+      }
+      var ec2 = new AWS.EC2();
+      var params = {
+        InstanceIds: [
+          id
+        ]
+      };
+      ec2.rebootInstances(params, function (err, data) {
+        if (err) {
+          showDialog("重启实例失败：" + err.name, "错误：" + err.message + " 请再试一次或联系支持");
+          setIdOfInstanceRebooting("");
+        }
+        else {
+          showCheckInstancesAlert("重启实例成功", "实例正在重启中");
+          setIdOfInstanceRebooting("");
+          checkInstances(true);
+        }
+      });
+    }
+    else if (mode === 2 || mode === 4) {
+      var postBody
+      if (mode === 2) {
+        postBody = JSON.stringify({
+          aki: aki,
+          saki: saki,
+          region: regionOfCheckedInstances,
+          instanceId: id,
+          useProxy: false
+        });
+      }
+      else if (mode === 4) {
+        postBody = JSON.stringify({
+          aki: aki,
+          saki: saki,
+          region: regionOfCheckedInstances,
+          instanceId: id,
+          useProxy: true,
+          proxy: proxy
+        });
+      }
+      fetch(remote + '/aws-reboot-instance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: postBody
+      })
+        .then(async (response) => {
+          var body = await response.json();
+          if (response.ok) {
+            showCheckInstancesAlert("重启实例成功", "实例正在重启中");
+            setIdOfInstanceRebooting("");
+            checkInstances(true);
+          }
+          else {
+            showDialog("重启实例失败：" + body.error.name, "错误：" + body.error.message + " 请再试一次或联系支持");
+            setIdOfInstanceRebooting("");
+          }
+        });
+    }
+  }
+
   return (
     <div className="App">
       <div>
@@ -1388,12 +1667,21 @@ export default function App() {
                   <TableCell>{row.platform}</TableCell>
                   <TableCell>{row.launchtime}</TableCell>
                   <TableCell>
-                    <Box sx={{ '& button': { m: 1 } }}>
-                      {idOfGettingWindowsPassword === row.id || idOfInstanceChangingIp === row.id || idOfInstanceTerminating === row.id ? (<CircularProgress />) : (
+                    <Box sx={{ '& button': { m: 0.5 } }}>
+                      {idOfGettingWindowsPassword === row.id || idOfInstanceChangingIp === row.id || idOfInstanceTerminating === row.id || idOfInstanceStarting === row.id || idOfInstanceStopping === row.id || idOfInstanceRebooting === row.id ? (<CircularProgress size={20} />) : (
                         <div>
+                          {row.state === 16 && (
+                            <>
+                              <Button size="small" variant="outlined" onClick={() => stopInstance(row.id)}>关机</Button>
+                              <Button size="small" variant="outlined" onClick={() => rebootInstance(row.id)}>重启</Button>
+                            </>
+                          )}
+                          {row.state === 80 && (
+                            <Button size="small" variant="outlined" onClick={() => startInstance(row.id)}>开机</Button>
+                          )}
                           {row.platform == "Windows" ? (
                             <div>
-                              <Input type="file" onChange={(e) => {
+                              <Input type="file" size="small" onChange={(e) => {
                                 setKeyFile(e.target.files[0]);
                               }}></Input>
                               <Button size="small" variant="outlined" onClick={() => getWindowsPassword(row.id)}>获取密码</Button>
